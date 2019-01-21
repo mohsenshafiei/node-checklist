@@ -120,3 +120,34 @@
 - Inspect for outdated packages
 - Use docker-compose for e2e testing
 - Refactor regularly using static analysis tools like `Sonarqube` and `Code Climate`
+
+##### Going to production
+
+- Monitoring
+- Increase transparency using smart logging
+- Kibana (part of the Elastic stack) facilitates advanced searching on log content
+- Kibana (part of the Elastic stack) visualizes data based on logs
+- It’s very tempting to cargo-cult Express and use its rich middleware offering for networking related tasks like serving static files, gzip encoding, throttling requests, SSL termination, etc. This is a performance kill due to its single threaded model which will keep the CPU busy for long periods (Remember, Node’s execution model is optimized for short tasks or async IO related tasks). A better approach is to use a tool that expertise in networking tasks – the most popular are nginx and HAproxy which are also used by the biggest cloud vendors to lighten the incoming load on node.js processes.
+- Using nginx to compress server responses
+- Your code must be identical across all environments, but amazingly npm lets dependencies drift across environments by default – when you install packages at various environments it tries to fetch packages’ latest patch version.
+- Guard and restart your process upon failure
+- `PM2`, `AWS ECS`, `Kubernetes`, `pm2-docker`
+- In development, you started your app simply from the command line with node server.js or something similar. But doing this in production is a recipe for disaster. If the app crashes, it will be offline until you restart it. To ensure your app restarts if it crashes, use a process manager. A process manager is a “container” for applications that facilitate deployment, provides high availability, and enables you to manage the application at runtime.
+- Understanding Node.js Clustering in Docker-Land “Docker containers are streamlined, lightweight virtual environments, designed to simplify processes to their bare minimum. Processes that manage and coordinate their own resources are no longer as valuable. Instead, management stacks like Kubernetes, Mesos, and Cattle have popularized the concept that these resources should be managed infrastructure-wide. CPU and memory resources are allocated by “schedulers”, and network resources are managed by stack-provided load balancers.
+- Utilize all CPU cores: advanced use cases, consider replicating the NODE process using custom deployment script and balancing using a specialized tool such as nginx or use a container engine such as AWS ECS or Kubernetees that have advanced features for deployment and replication of processes.
+- APM (application performance monitoring) refers to a family of products that aims to monitor application performance from end to end, also from the customer perspective.
+* Make you code production ready:
+  - The twelve-factor guide
+  - Be stateless – Save no data locally on a specific web server
+  - Cache – Utilize cache heavily, yet never fail because of cache mismatch
+  - Test memory – gauge memory usage and leaks as part your development flow, tools such as `memwatch` can greatly facilitate this task
+  - Name functions – Minimize the usage of anonymous functions (i.e. inline callback) as a typical memory profiler will provide memory usage per method name
+  - Use CI tools – Use CI tool to detect failures before sending to production. For example, use ESLint to detect reference errors and undefined variables. Use –trace-sync-io to identify code that uses synchronous APIs (instead of the async version)
+  - Log wisely – Include in each log statement contextual information, hopefully in JSON format so log aggregators tools such as Elastic can search upon those properties (see separate bullet – ‘Increase visibility using smart logs’). Also, include transaction-id that identifies each request and allows to correlate lines that describe the same transaction (see separate bullet – ‘Include Transaction-ID’)
+  - Error management – Error handling is the Achilles’ heel of Node.js production sites – many Node processes are crashing because of minor errors while others hang on alive in a faulty state instead of crashing.
+- memory issues are a known Node’s gotcha one must be aware of. Above all, memory usage must be monitored constantly. In the development and small production sites, you may gauge manually using Linux commands or npm tools and libraries like node-inspector and memwatch.
+- The main drawback of this manual activities is that they require a human being actively monitoring – for serious production sites, it’s absolutely vital to use robust monitoring tools e.g. (AWS CloudWatch, DataDog or any similar proactive system) that alerts when a leak happens.
+- There are also few development guidelines to prevent leaks: avoid storing data on the global level, use streams for data with dynamic size, limit variables scope using let and const.
+- Get your frontend assets out of Node
+  - Using a reverse proxy – your static files will be located right next to your Node application, only requests to the static files folder will be served by a proxy that sits in front of your Node app such as nginx. Using this approach, your Node app is responsible deploying the static files but not to serve them. Your frontend’s colleague will love this approach as it prevents cross-origin-requests from the frontend.
+  - Cloud storage – your static files will NOT be part of your Node app content, they will be uploaded to services like AWS S3, Azure BlobStorage, or other similar services that were born for this mission. Using this approach, your Node app is not responsible deploying the static files neither to serve them, hence a complete decoupling is drawn between Node and the Frontend which is anyway handled by different teams.
